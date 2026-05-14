@@ -1,6 +1,5 @@
 package com.boraviajar.api.web;
 
-import com.boraviajar.api.entity.User;
 import com.boraviajar.api.service.ParticipanteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -34,5 +33,14 @@ public class ParticipanteController {
         return Map.of("participante", participanteService.isParticipante(viagemId, userId));
     }
 
+    @PatchMapping("/{participanteId}/status")
+    public Map<String, Object> updateStatus(
+            @PathVariable long participanteId,
+            @RequestBody StatusBody body) {
+        return participanteService.updateStatus(participanteId, body.status(), CurrentUser.require());
+    }
+
     public record ViagemIdBody(long viagemId) {}
+
+    public record StatusBody(String status) {}
 }

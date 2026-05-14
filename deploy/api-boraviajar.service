@@ -1,0 +1,17 @@
+[Unit]
+Description=API Bora Viajar (Spring Boot)
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/opt/api_boraviajar
+ExecStart=/usr/bin/java -Dserver.forward-headers-strategy=framework -jar /opt/api_boraviajar/target/api-boraviajar-0.1.0-SNAPSHOT.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+
+# Variáveis sensíveis e de ligação: ver exemplo em deploy/api-boraviajar.env.example
+EnvironmentFile=-/etc/api-boraviajar.env
+
+[Install]
+WantedBy=multi-user.target

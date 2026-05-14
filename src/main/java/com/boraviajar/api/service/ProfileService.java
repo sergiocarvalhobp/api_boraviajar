@@ -28,6 +28,7 @@ public class ProfileService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
         Map<String, Object> pub = new LinkedHashMap<>();
         pub.put("id", u.getId());
+        pub.put("openId", u.getOpenId());
         pub.put("name", u.getName());
         pub.put("bio", u.getBio());
         pub.put("idade", u.getIdade());
@@ -54,6 +55,9 @@ public class ProfileService {
 
     @Transactional
     public User atualizar(User me, ProfilePatch patch) {
+        if (patch.name() != null && !patch.name().isBlank()) {
+            me.setName(patch.name().trim());
+        }
         if (patch.bio() != null) me.setBio(patch.bio());
         if (patch.idade() != null) me.setIdade(patch.idade());
         if (patch.cidadeResidencia() != null) me.setCidadeResidencia(patch.cidadeResidencia());
@@ -65,6 +69,7 @@ public class ProfileService {
     }
 
     public record ProfilePatch(
+            String name,
             String bio,
             Integer idade,
             String cidadeResidencia,

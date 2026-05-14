@@ -64,4 +64,24 @@ public class ParticipanteService {
         participanteRepository.deleteByViagemIdAndUserId(viagemId, user.getId());
         return Map.of("success", true);
     }
+
+    @Transactional
+    public Map<String, Object> updateStatus(long participanteId, String status, User leader) {
+        Participante p = participanteRepository.findById(participanteId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Participante não encontrado"));
+        Viagem v = viagemRepository.findById(p.getViagemId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Viagem não encontrada"));
+        if (!v.getLiderId().equals(leader.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Apenas o líder da viagem pode alterar o status");
+        }
+        p.setStatus(status);
+        p.setUpdatedAt(Instant.now());
+        p = participanteRepository.save(p);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("id", p.getId());
+        out.put("viagemId", p.getViagemId());
+        out.put("userId", p.getUserId());
+        out.put("status", p.getStatus());
+        return out;
+    }
 }
