@@ -1,0 +1,67 @@
+package com.boraviajar.api.service;
+
+import com.boraviajar.api.entity.Participante;
+import com.boraviajar.api.entity.User;
+import com.boraviajar.api.entity.Viagem;
+import com.boraviajar.api.repo.ParticipanteRepository;
+import com.boraviajar.api.repo.ViagemRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+@Service
+@RequiredArgsConstructor
+public class ParticipanteService {
+
+    private final ParticipanteRepository participanteRepository;
+    private final ViagemRepository viagemRepository;
+
+    public long count(long viagemId) {
+        return participanteRepository.countByViagemId(viagemId);
+    }
+
+    public boolean isParticipante(long viagemId, long userId) {
+        return participanteRepository.findByViagemIdAndUserId(viagemId, userId).isPresent();
+    }
+
+    @Transactional
+    public Map<String, Object> join(long viagemId, User user) {
+        if (participanteRepository.findByViagemIdAndUserId(viagemId, user.getId()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Você já é participante desta viagem");
+        }
+        Viagem v = viagemRepository.findById(viagemId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Viagem não encontrada"));
+        if (v.getMaxVagas() != null) {
+            long c = participanteRepository.countByViagemId(viagemId);
+            if (c >= v.getMaxVagas()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Esta viagem já está com todas as vagas preenchidas");
+            }
+        }
+        Participante p = new Participante();
+        p.setViagemId(viagemId);
+        p.setUserId(user.getId());
+        p.setStatus("interessado");
+        Instant now = Instant.now();
+        p.setCreatedAt(now);
+        p.setUpdatedAt(now);
+        p = participanteRepository.save(p);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("id", p.getId());
+        out.put("viagemId", p.getViagemId());
+        out.put("userId", p.getUserId());
+        out.put("status", p.getStatus());
+        return out;
+    }
+
+    @Transactional
+    public Map<String, Boolean> leave(long viagemId, User user) {
+        participanteRepository.deleteByViagemIdAndUserId(viagemId, user.getId());
+        return Map.of("success", true);
+    }
+}
