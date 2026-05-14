@@ -17,7 +17,8 @@ public class JwtService {
     private final SecretKey key;
 
     public JwtService(@Value("${boraviajar.jwt.secret}") String secret) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        String trimmed = secret == null ? "" : secret.trim();
+        this.key = Keys.hmacShaKeyFor(trimmed.getBytes(StandardCharsets.UTF_8));
     }
 
     /** Extrai o claim `openId` do JWT (payload igual ao do servidor Node / jose). */
