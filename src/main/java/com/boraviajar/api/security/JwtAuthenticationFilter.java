@@ -4,6 +4,7 @@ import com.boraviajar.api.entity.User;
 import com.boraviajar.api.repo.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ import java.util.Optional;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+    private static final String SESSION_COOKIE = "app_session_id";
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
@@ -37,7 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        String auth = request.getHeader("Authorization");
+        String auth = resolveAuthorizationLikeHeader(request);
         Optional<String> openIdOpt = jwtService.parseOpenId(auth);
         if (openIdOpt.isPresent()) {
             Optional<User> userOpt = userRepository.findByOpenId(openIdOpt.get());
@@ -62,5 +64,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * Primeiro tenta Authorization: Bearer.
+     * Se a borda/nginx remover esse header, usa cookie app_session_id como fallback.
+     */
+    private String resolveAuthorizationLikeHeader(HttpServletRequest request) {
+        String auth = request.getHeader("Authorization");
+        if (auth != null && auth.startsWith("Bearer ")) {
+            return auth;
+        }
+
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) return auth;
+        for (Cookie c : cookies) {
+            if (SESSION_COOKIE.equals(c.getName())) {
+                String token = c.getValue();
+                if (token != null && !token.isBlank()) {
+                    return "Bearer " + token.trim();
+                }
+            }
+        }
+        return auth;
     }
 }

@@ -27,7 +27,7 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<User> me() {
-        return ResponseEntity.ok(CurrentUser.optionalOrNull());
+        return ResponseEntity.ok(CurrentUser.require());
     }
 
     @PostMapping("/logout")
