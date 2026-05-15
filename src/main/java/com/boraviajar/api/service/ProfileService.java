@@ -64,6 +64,10 @@ public class ProfileService {
         if (patch.estadoResidencia() != null) me.setEstadoResidencia(patch.estadoResidencia());
         if (patch.destinosFavoritosJson() != null) me.setDestinosFavoritos(patch.destinosFavoritosJson());
         if (patch.instagram() != null) me.setInstagram(patch.instagram());
+        if (patch.avatarUrl() != null) {
+            String avatar = patch.avatarUrl().trim();
+            me.setAvatarUrl(avatar.isEmpty() ? null : avatar);
+        }
         me.setUpdatedAt(Instant.now());
         return userRepository.save(me);
     }
@@ -75,6 +79,7 @@ public class ProfileService {
             String cidadeResidencia,
             String estadoResidencia,
             String destinosFavoritosJson,
-            String instagram
+            String instagram,
+            String avatarUrl
     ) {}
 }

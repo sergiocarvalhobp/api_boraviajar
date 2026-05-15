@@ -36,7 +36,7 @@ public class User {
 
     private Integer idade;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "avatarUrl", columnDefinition = "TEXT")
     private String avatarUrl;
 
     @Column(name = "cidadeResidencia", length = 150)
