@@ -1,0 +1,42 @@
+# Exemplo: /etc/nginx/sites-available/api.boraviajar.net
+# A API Java costuma rodar em 127.0.0.1:8081 (ver PORT em /etc/api-boraviajar.env).
+#
+# IMPORTANTE: não bloquear POST em /api/v1/auth/token (login mobile).
+# Se só GET /health funcionar e POST /auth/token der 403, o Spring pode estar OK
+# e o nginx é quem nega (limit_except, auth_basic, outro location, etc.).
+
+server {
+    listen 443 ssl http2;
+    server_name api.boraviajar.net;
+
+    # ssl_certificate ... (certbot)
+
+    # Login mobile — não bloquear POST (alguns templates negam /auth/*)
+    location = /api/v1/auth/token {
+        proxy_pass http://127.0.0.1:8081;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location = /api/v1/public/session {
+        proxy_pass http://127.0.0.1:8081;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8081;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 10m;
+    }
+}

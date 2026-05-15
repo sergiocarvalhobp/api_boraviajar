@@ -33,9 +33,11 @@ public class SecurityConfig {
                 .cors(c -> c.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/docs/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/token").permitAll()
+                        .requestMatchers("/api/v1/auth/token").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/public/session").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/system/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/system/deploy-check").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/trips", "/api/v1/trips/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/messages/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/participantes/**").permitAll()
