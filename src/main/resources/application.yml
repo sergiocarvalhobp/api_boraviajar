@@ -19,10 +19,13 @@ spring:
 server:
   port: ${PORT:8080}
 
-# Mesmo segredo que JWT_SECRET no .env do bora_viajar (sessão HS256)
+# Mesmo JWT_SECRET que o site Node (se ainda existir) — sessão HS256
 boraviajar:
   jwt:
     secret: ${JWT_SECRET:changeme-use-same-as-node-backend}
+  auth0:
+    domain: ${AUTH0_DOMAIN:}
+    client-id: ${AUTH0_CLIENT_ID:}
   vapid:
     public-key: ${VAPID_PUBLIC_KEY:}
 

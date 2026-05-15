@@ -9,6 +9,10 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -42,5 +46,26 @@ public class JwtService {
             return Optional.empty();
         }
         return Optional.empty();
+    }
+
+    /**
+     * Emite JWT de sessão compatível com o servidor Node (claims: openId, appId, name, email opcional).
+     */
+    public String createSessionToken(
+            String openId, String name, String email, String appId, long expiresInMs) {
+        Instant exp = Instant.now().plusMillis(expiresInMs);
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("openId", openId);
+        claims.put("appId", appId);
+        claims.put("name", name != null ? name : "");
+        if (email != null && !email.isBlank()) {
+            claims.put("email", email);
+        }
+        return Jwts.builder()
+                .header().add("typ", "JWT").and()
+                .claims(claims)
+                .expiration(Date.from(exp))
+                .signWith(key)
+                .compact();
     }
 }
