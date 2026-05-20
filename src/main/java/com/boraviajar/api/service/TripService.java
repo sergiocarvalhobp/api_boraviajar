@@ -6,6 +6,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,13 +34,47 @@ public class TripService {
         return listAll().stream().map(v -> toTripMap(v, viewer)).toList();
     }
 
-    public List<Map<String, Object>> listByFilterEnriched(
+    public Map<String, Object> listPageEnriched(User viewer, int offset, int limit) {
+        int safeLimit = Math.min(50, Math.max(1, limit));
+        int safeOffset = Math.max(0, offset);
+        int page = safeOffset / safeLimit;
+        List<Viagem> rows = viagemRepository.findAllByOrderByCreatedAtDesc(
+                PageRequest.of(page, safeLimit));
+        long total = viagemRepository.count();
+        return toPagedResponse(rows, viewer, safeOffset, safeLimit, total);
+    }
+
+    public Map<String, Object> listByFilterEnriched(
             User viewer,
             String destino, String estado, String cidade, String atrativo,
             LocalDate dataInicio, LocalDate dataFim) {
-        return listByFilter(destino, estado, cidade, atrativo, dataInicio, dataFim).stream()
-                .map(v -> toTripMap(v, viewer))
-                .toList();
+        return listByFilterPageEnriched(
+                viewer, destino, estado, cidade, atrativo, dataInicio, dataFim, 0, Integer.MAX_VALUE);
+    }
+
+    public Map<String, Object> listByFilterPageEnriched(
+            User viewer,
+            String destino, String estado, String cidade, String atrativo,
+            LocalDate dataInicio, LocalDate dataFim,
+            int offset, int limit) {
+        int safeLimit = Math.min(50, Math.max(1, limit));
+        int safeOffset = Math.max(0, offset);
+        FilterQuery fq = buildFilterQuery(destino, estado, cidade, atrativo, dataInicio, dataFim);
+        List<Viagem> rows = fq.list(safeOffset, safeLimit);
+        long total = fq.count();
+        return toPagedResponse(rows, viewer, safeOffset, safeLimit, total);
+    }
+
+    private Map<String, Object> toPagedResponse(
+            List<Viagem> rows, User viewer, int offset, int limit, long total) {
+        List<Map<String, Object>> items = rows.stream().map(v -> toTripMap(v, viewer)).toList();
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("items", items);
+        out.put("offset", offset);
+        out.put("limit", limit);
+        out.put("total", total);
+        out.put("hasMore", offset + rows.size() < total);
+        return out;
     }
 
     public Optional<Map<String, Object>> findEnrichedById(long id, User viewer) {
@@ -49,38 +84,68 @@ public class TripService {
     /** Equivalente a getViagensByFilter no Node. */
     public List<Viagem> listByFilter(String destino, String estado, String cidade, String atrativo,
                                      LocalDate dataInicio, LocalDate dataFim) {
-        StringBuilder jpql = new StringBuilder("select v from Viagem v where 1=1");
+        return buildFilterQuery(destino, estado, cidade, atrativo, dataInicio, dataFim)
+                .list(0, Integer.MAX_VALUE);
+    }
+
+    private FilterQuery buildFilterQuery(
+            String destino, String estado, String cidade, String atrativo,
+            LocalDate dataInicio, LocalDate dataFim) {
+        StringBuilder where = new StringBuilder(" where 1=1");
         Map<String, Object> params = new HashMap<>();
         if (estado != null && !estado.isBlank()) {
-            jpql.append(" and v.estado = :estado");
+            where.append(" and v.estado = :estado");
             params.put("estado", estado);
         }
         if (cidade != null && !cidade.isBlank()) {
-            jpql.append(" and lower(v.cidade) like lower(concat('%', :cidade, '%'))");
+            where.append(" and lower(v.cidade) like lower(concat('%', :cidade, '%'))");
             params.put("cidade", cidade);
         }
         if (atrativo != null && !atrativo.isBlank()) {
-            jpql.append(" and lower(v.atrativo) like lower(concat('%', :atrativo, '%'))");
+            where.append(" and lower(v.atrativo) like lower(concat('%', :atrativo, '%'))");
             params.put("atrativo", atrativo);
         }
         if (destino != null && !destino.isBlank()
                 && (estado == null || estado.isBlank())
                 && (cidade == null || cidade.isBlank())) {
-            jpql.append(" and lower(v.destino) like lower(concat('%', :destino, '%'))");
+            where.append(" and lower(v.destino) like lower(concat('%', :destino, '%'))");
             params.put("destino", destino);
         }
         if (dataInicio != null) {
-            jpql.append(" and v.dataInicio >= :dataInicio");
+            where.append(" and v.dataInicio >= :dataInicio");
             params.put("dataInicio", dataInicio);
         }
         if (dataFim != null) {
-            jpql.append(" and v.dataFim <= :dataFim");
+            where.append(" and v.dataFim <= :dataFim");
             params.put("dataFim", dataFim);
         }
-        jpql.append(" order by v.dataInicio");
-        TypedQuery<Viagem> q = entityManager.createQuery(jpql.toString(), Viagem.class);
-        params.forEach(q::setParameter);
-        return q.getResultList();
+        return new FilterQuery(where.toString(), params);
+    }
+
+    private final class FilterQuery {
+        private final String whereClause;
+        private final Map<String, Object> params;
+
+        private FilterQuery(String whereClause, Map<String, Object> params) {
+            this.whereClause = whereClause;
+            this.params = params;
+        }
+
+        List<Viagem> list(int offset, int limit) {
+            TypedQuery<Viagem> q = entityManager.createQuery(
+                    "select v from Viagem v" + whereClause + " order by v.dataInicio", Viagem.class);
+            params.forEach(q::setParameter);
+            q.setFirstResult(offset);
+            q.setMaxResults(limit);
+            return q.getResultList();
+        }
+
+        long count() {
+            TypedQuery<Long> q = entityManager.createQuery(
+                    "select count(v) from Viagem v" + whereClause, Long.class);
+            params.forEach(q::setParameter);
+            return q.getSingleResult();
+        }
     }
 
     public Optional<Viagem> findById(long id) {

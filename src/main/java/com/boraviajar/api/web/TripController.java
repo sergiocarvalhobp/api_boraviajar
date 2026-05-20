@@ -21,22 +21,27 @@ public class TripController {
     private final TripService tripService;
 
     @GetMapping
-    public List<Map<String, Object>> list() {
-        return tripService.listAllEnriched(CurrentUser.optionalOrNull());
+    public Map<String, Object> list(
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "10") int limit
+    ) {
+        return tripService.listPageEnriched(CurrentUser.optionalOrNull(), offset, limit);
     }
 
     @GetMapping("/filter")
-    public List<Map<String, Object>> filter(
+    public Map<String, Object> filter(
             @RequestParam(required = false) String destino,
             @RequestParam(required = false) String estado,
             @RequestParam(required = false) String cidade,
             @RequestParam(required = false) String atrativo,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "10") int limit
     ) {
-        return tripService.listByFilterEnriched(
+        return tripService.listByFilterPageEnriched(
                 CurrentUser.optionalOrNull(),
-                destino, estado, cidade, atrativo, dataInicio, dataFim);
+                destino, estado, cidade, atrativo, dataInicio, dataFim, offset, limit);
     }
 
     @GetMapping("/{id}")

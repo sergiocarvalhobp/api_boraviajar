@@ -17,9 +17,14 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
+  codec:
+    max-in-memory-size: 15MB
 
 server:
   port: ${PORT:8080}
+  tomcat:
+    max-http-post-size: 15MB
+    max-swallow-size: 15MB
 
 # Mesmo JWT_SECRET que o site Node (se ainda existir) — sessão HS256
 boraviajar:
