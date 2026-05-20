@@ -61,7 +61,10 @@ public class ParticipanteService {
 
     @Transactional
     public Map<String, Boolean> leave(long viagemId, User user) {
-        participanteRepository.deleteByViagemIdAndUserId(viagemId, user.getId());
+        Participante p = participanteRepository.findByViagemIdAndUserId(viagemId, user.getId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Você não está participando desta viagem"));
+        participanteRepository.delete(p);
         return Map.of("success", true);
     }
 
