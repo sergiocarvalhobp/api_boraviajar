@@ -21,12 +21,12 @@ public class TripController {
     private final TripService tripService;
 
     @GetMapping
-    public List<Viagem> list() {
-        return tripService.listAll();
+    public List<Map<String, Object>> list() {
+        return tripService.listAllEnriched(CurrentUser.optionalOrNull());
     }
 
     @GetMapping("/filter")
-    public List<Viagem> filter(
+    public List<Map<String, Object>> filter(
             @RequestParam(required = false) String destino,
             @RequestParam(required = false) String estado,
             @RequestParam(required = false) String cidade,
@@ -34,12 +34,14 @@ public class TripController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim
     ) {
-        return tripService.listByFilter(destino, estado, cidade, atrativo, dataInicio, dataFim);
+        return tripService.listByFilterEnriched(
+                CurrentUser.optionalOrNull(),
+                destino, estado, cidade, atrativo, dataInicio, dataFim);
     }
 
     @GetMapping("/{id}")
-    public Viagem getById(@PathVariable long id) {
-        return tripService.findById(id)
+    public Map<String, Object> getById(@PathVariable long id) {
+        return tripService.findEnrichedById(id, CurrentUser.optionalOrNull())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 

@@ -29,6 +29,23 @@ public class TripService {
         return viagemRepository.findAllByOrderByCreatedAtDesc();
     }
 
+    public List<Map<String, Object>> listAllEnriched(User viewer) {
+        return listAll().stream().map(v -> toTripMap(v, viewer)).toList();
+    }
+
+    public List<Map<String, Object>> listByFilterEnriched(
+            User viewer,
+            String destino, String estado, String cidade, String atrativo,
+            LocalDate dataInicio, LocalDate dataFim) {
+        return listByFilter(destino, estado, cidade, atrativo, dataInicio, dataFim).stream()
+                .map(v -> toTripMap(v, viewer))
+                .toList();
+    }
+
+    public Optional<Map<String, Object>> findEnrichedById(long id, User viewer) {
+        return findById(id).map(v -> toTripMap(v, viewer));
+    }
+
     /** Equivalente a getViagensByFilter no Node. */
     public List<Viagem> listByFilter(String destino, String estado, String cidade, String atrativo,
                                      LocalDate dataInicio, LocalDate dataFim) {
@@ -125,4 +142,37 @@ public class TripService {
             String tipo,
             Integer maxVagas
     ) {}
+
+    private Map<String, Object> toTripMap(Viagem v, User viewer) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", v.getId());
+        m.put("liderId", v.getLiderId());
+        m.put("destino", v.getDestino());
+        m.put("estado", v.getEstado());
+        m.put("cidade", v.getCidade());
+        m.put("atrativo", v.getAtrativo());
+        m.put("dataInicio", v.getDataInicio());
+        m.put("dataFim", v.getDataFim());
+        m.put("descricao", v.getDescricao());
+        m.put("tipo", v.getTipo());
+        m.put("maxVagas", v.getMaxVagas());
+        m.put("createdAt", v.getCreatedAt());
+        m.put("participantesCount", participanteRepository.countByViagemId(v.getId()));
+        userRepository.findById(v.getLiderId()).ifPresent(leader -> m.put("lider", toUserMap(leader)));
+        if (viewer != null) {
+            participanteRepository.findByViagemIdAndUserId(v.getId(), viewer.getId())
+                    .ifPresent(p -> m.put("myStatus", p.getStatus()));
+        }
+        return m;
+    }
+
+    private static Map<String, Object> toUserMap(User u) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", u.getId());
+        m.put("openId", u.getOpenId());
+        m.put("name", u.getName());
+        m.put("foto", u.getAvatarUrl());
+        m.put("avatarUrl", u.getAvatarUrl());
+        return m;
+    }
 }
