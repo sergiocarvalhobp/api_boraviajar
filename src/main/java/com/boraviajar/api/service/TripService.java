@@ -92,6 +92,11 @@ public class TripService {
         return findById(id).map(v -> toTripMap(v, viewer));
     }
 
+    /** Mapa enriquecido para listagens (ex.: histórico do usuário). */
+    public Map<String, Object> toTripMapForViewer(Viagem v, User viewer) {
+        return toTripMap(v, viewer);
+    }
+
     /** Equivalente a getViagensByFilter no Node. */
     public List<Viagem> listByFilter(String destino, String estado, String cidade, String atrativo,
                                      LocalDate dataInicio, LocalDate dataFim) {
