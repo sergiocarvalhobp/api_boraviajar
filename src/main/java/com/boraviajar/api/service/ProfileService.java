@@ -22,6 +22,7 @@ public class ProfileService {
     private final UserRepository userRepository;
     private final ViagemRepository viagemRepository;
     private final ParticipanteRepository participanteRepository;
+    private final OrganizerRatingService organizerRatingService;
 
     public Map<String, Object> getPublic(long userId) {
         User u = userRepository.findById(userId)
@@ -38,6 +39,10 @@ public class ProfileService {
         pub.put("destinosFavoritos", u.getDestinosFavoritos());
         pub.put("instagram", u.getInstagram());
         pub.put("createdAt", u.getCreatedAt());
+        organizerRatingService.averageForOrganizer(userId)
+                .ifPresent(avg -> pub.put("organizerRating", avg));
+        long ratingCount = organizerRatingService.countForOrganizer(userId);
+        if (ratingCount > 0) pub.put("organizerRatingCount", ratingCount);
 
         List<Viagem> criadas = viagemRepository.findAllByLiderIdOrderByCreatedAtDesc(userId);
         Set<Long> pids = participanteRepository.findByUserId(userId).stream()

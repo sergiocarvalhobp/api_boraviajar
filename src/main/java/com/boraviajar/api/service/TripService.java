@@ -23,6 +23,7 @@ public class TripService {
     private final ViagemRepository viagemRepository;
     private final UserRepository userRepository;
     private final ParticipanteRepository participanteRepository;
+    private final OrganizerRatingService organizerRatingService;
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -223,11 +224,16 @@ public class TripService {
         m.put("maxVagas", v.getMaxVagas());
         m.put("createdAt", v.getCreatedAt());
         m.put("participantesCount", participanteRepository.countByViagemId(v.getId()));
-        userRepository.findById(v.getLiderId()).ifPresent(leader -> m.put("lider", toUserMap(leader)));
+        userRepository.findById(v.getLiderId()).ifPresent(leader -> {
+            Map<String, Object> leaderMap = toUserMap(leader);
+            organizerRatingService.enrichLeaderMap(leaderMap, leader.getId());
+            m.put("lider", leaderMap);
+        });
         if (viewer != null) {
             participanteRepository.findByViagemIdAndUserId(v.getId(), viewer.getId())
                     .ifPresent(p -> m.put("myStatus", p.getStatus()));
         }
+        organizerRatingService.enrichTripMap(m, v, viewer);
         return m;
     }
 

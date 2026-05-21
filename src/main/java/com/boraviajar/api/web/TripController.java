@@ -2,6 +2,7 @@ package com.boraviajar.api.web;
 
 import com.boraviajar.api.entity.User;
 import com.boraviajar.api.entity.Viagem;
+import com.boraviajar.api.service.OrganizerRatingService;
 import com.boraviajar.api.service.TripService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -19,6 +20,7 @@ import java.util.Map;
 public class TripController {
 
     private final TripService tripService;
+    private final OrganizerRatingService organizerRatingService;
 
     @GetMapping
     public Map<String, Object> list(
@@ -55,6 +57,22 @@ public class TripController {
         return tripService.detailsWithParticipants(id);
     }
 
+    @GetMapping("/{id}/organizer-rating")
+    public Map<String, Object> organizerRatingState(@PathVariable long id) {
+        return organizerRatingService.getState(id, CurrentUser.require());
+    }
+
+    @PutMapping("/{id}/organizer-rating")
+    public Map<String, Object> submitOrganizerRating(
+            @PathVariable long id,
+            @RequestBody OrganizerRatingBody body
+    ) {
+        if (body.stars() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Campo stars é obrigatório");
+        }
+        return organizerRatingService.submit(id, CurrentUser.require(), body.stars());
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Viagem create(@RequestBody CreateTripBody body) {
@@ -69,6 +87,8 @@ public class TripController {
                 body.destino(), body.estado(), body.cidade(), body.atrativo(),
                 body.dataInicio(), body.dataFim(), body.descricao(), body.tipo(), body.maxVagas()));
     }
+
+    public record OrganizerRatingBody(Integer stars) {}
 
     public record CreateTripBody(
             String destino,
