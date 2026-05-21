@@ -34,7 +34,15 @@ public class ParticipanteController {
     }
 
     @PatchMapping("/{participanteId}/status")
-    public Map<String, Object> updateStatus(
+    public Map<String, Object> updateStatusPatch(
+            @PathVariable long participanteId,
+            @RequestBody StatusBody body) {
+        return participanteService.updateStatus(participanteId, body.status(), CurrentUser.require());
+    }
+
+    /** POST — alguns proxies bloqueiam PATCH. */
+    @PostMapping("/{participanteId}/status")
+    public Map<String, Object> updateStatusPost(
             @PathVariable long participanteId,
             @RequestBody StatusBody body) {
         return participanteService.updateStatus(participanteId, body.status(), CurrentUser.require());

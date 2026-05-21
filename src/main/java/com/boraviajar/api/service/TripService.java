@@ -187,7 +187,8 @@ public class TripService {
             row.put("status", p.getStatus());
             row.put("createdAt", p.getCreatedAt());
             row.put("updatedAt", p.getUpdatedAt());
-            row.put("user", userRepository.findById(p.getUserId()).orElse(null));
+            userRepository.findById(p.getUserId())
+                    .ifPresent(u -> row.put("user", toUserMap(u)));
             withUsers.add(row);
         }
         Map<String, Object> out = new LinkedHashMap<>();

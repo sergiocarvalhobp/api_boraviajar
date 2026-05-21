@@ -17,7 +17,7 @@ public class MessageController {
 
     @GetMapping("/viagem/{viagemId}")
     public List<Map<String, Object>> list(@PathVariable long viagemId) {
-        return messageService.listByViagem(viagemId);
+        return messageService.listByViagem(viagemId, CurrentUser.optionalOrNull());
     }
 
     @PostMapping

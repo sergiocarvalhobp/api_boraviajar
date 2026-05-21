@@ -37,6 +37,14 @@ public class ParticipanteService {
         }
         Viagem v = viagemRepository.findById(viagemId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Viagem não encontrada"));
+        if (v.getLiderId().equals(user.getId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "O organizador não pode participar da própria viagem");
+        }
+        if (v.getDataFim() != null && !v.getDataFim().isAfter(java.time.LocalDate.now())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Esta viagem já encerrou");
+        }
         if (v.getMaxVagas() != null) {
             long c = participanteRepository.countByViagemId(viagemId);
             if (c >= v.getMaxVagas()) {
@@ -77,7 +85,18 @@ public class ParticipanteService {
         if (!v.getLiderId().equals(leader.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Apenas o líder da viagem pode alterar o status");
         }
-        p.setStatus(status);
+        if (status == null || status.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Status é obrigatório");
+        }
+        final String normalized = status.trim().toLowerCase();
+        if (!normalized.equals("interessado")
+                && !normalized.equals("confirmado")
+                && !normalized.equals("recusado")) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Status inválido. Use: interessado, confirmado ou recusado");
+        }
+        p.setStatus(normalized);
         p.setUpdatedAt(Instant.now());
         p = participanteRepository.save(p);
         Map<String, Object> out = new LinkedHashMap<>();

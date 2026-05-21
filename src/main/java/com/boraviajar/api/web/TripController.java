@@ -66,10 +66,23 @@ public class TripController {
     }
 
     @PutMapping("/{id}/organizer-rating")
-    public Map<String, Object> submitOrganizerRating(
+    public Map<String, Object> submitOrganizerRatingPut(
             @PathVariable long id,
             @RequestBody OrganizerRatingBody body
     ) {
+        return submitOrganizerRating(id, body);
+    }
+
+    /** POST — alguns proxies/nginx bloqueiam PUT; mesmo corpo que PUT. */
+    @PostMapping("/{id}/organizer-rating")
+    public Map<String, Object> submitOrganizerRatingPost(
+            @PathVariable long id,
+            @RequestBody OrganizerRatingBody body
+    ) {
+        return submitOrganizerRating(id, body);
+    }
+
+    private Map<String, Object> submitOrganizerRating(long id, OrganizerRatingBody body) {
         if (body.stars() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Campo stars é obrigatório");
         }
