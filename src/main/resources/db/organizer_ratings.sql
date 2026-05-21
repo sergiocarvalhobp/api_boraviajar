@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS organizer_ratings (
     rater_user_id BIGINT NOT NULL,
     organizer_user_id BIGINT NOT NULL,
     estrelas TINYINT NOT NULL,
+    testemunho TEXT NULL,
     createdAt DATETIME(6) NOT NULL,
     updatedAt DATETIME(6) NOT NULL,
     CONSTRAINT uq_organizer_rating_viagem_rater UNIQUE (viagem_id, rater_user_id),

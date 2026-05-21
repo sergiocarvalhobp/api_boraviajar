@@ -73,7 +73,8 @@ public class TripController {
         if (body.stars() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Campo stars é obrigatório");
         }
-        return organizerRatingService.submit(id, CurrentUser.require(), body.stars());
+        return organizerRatingService.submit(
+                id, CurrentUser.require(), body.stars(), body.testemunho());
     }
 
     @PostMapping
@@ -91,7 +92,7 @@ public class TripController {
                 body.dataInicio(), body.dataFim(), body.descricao(), body.tipo(), body.maxVagas()));
     }
 
-    public record OrganizerRatingBody(Integer stars) {}
+    public record OrganizerRatingBody(Integer stars, String testemunho) {}
 
     public record CreateTripBody(
             String destino,

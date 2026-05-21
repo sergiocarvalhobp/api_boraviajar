@@ -34,6 +34,9 @@ public class OrganizerRating {
     @Column(nullable = false)
     private Integer estrelas;
 
+    @Column(columnDefinition = "TEXT")
+    private String testemunho;
+
     @Column(name = "createdAt", nullable = false)
     private Instant createdAt;
 

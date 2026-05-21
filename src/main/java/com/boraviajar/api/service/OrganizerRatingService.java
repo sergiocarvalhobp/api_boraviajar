@@ -30,8 +30,9 @@ public class OrganizerRatingService {
     private final ViagemRepository viagemRepository;
     private final ParticipanteRepository participanteRepository;
 
+    /** Viagem encerrada para avaliação: último dia da viagem ou depois. */
     public boolean isTripFinished(Viagem v) {
-        return v.getDataFim() != null && v.getDataFim().isBefore(LocalDate.now());
+        return v.getDataFim() != null && !v.getDataFim().isAfter(LocalDate.now());
     }
 
     public Optional<Double> averageForOrganizer(long organizerUserId) {
@@ -88,7 +89,12 @@ public class OrganizerRatingService {
             if (canRate || isLeader) {
                 organizerRatingRepository
                         .findByViagemIdAndRaterUserId(v.getId(), viewer.getId())
-                        .ifPresent(r -> tripMap.put("myOrganizerRating", r.getEstrelas()));
+                        .ifPresent(r -> {
+                            tripMap.put("myOrganizerRating", r.getEstrelas());
+                            if (r.getTestemunho() != null && !r.getTestemunho().isBlank()) {
+                                tripMap.put("myOrganizerTestimony", r.getTestemunho());
+                            }
+                        });
             }
         } catch (Exception e) {
             log.warn("enrichTripMap ignorado: {}", e.getMessage());
@@ -119,13 +125,18 @@ public class OrganizerRatingService {
         out.put("canRateOrganizer", canRate);
         organizerRatingRepository
                 .findByViagemIdAndRaterUserId(v.getId(), viewer.getId())
-                .ifPresent(r -> out.put("myOrganizerRating", r.getEstrelas()));
+                .ifPresent(r -> {
+                    out.put("myOrganizerRating", r.getEstrelas());
+                    if (r.getTestemunho() != null && !r.getTestemunho().isBlank()) {
+                        out.put("myOrganizerTestimony", r.getTestemunho());
+                    }
+                });
 
         return out;
     }
 
     @Transactional
-    public Map<String, Object> submit(long tripId, User rater, int stars) {
+    public Map<String, Object> submit(long tripId, User rater, int stars, String testemunho) {
         if (stars < 1 || stars > 5) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A nota deve ser entre 1 e 5");
         }
@@ -163,11 +174,18 @@ public class OrganizerRatingService {
             rating.setOrganizerUserId(v.getLiderId());
         }
         rating.setEstrelas(stars);
+        if (testemunho != null) {
+            String t = testemunho.trim();
+            rating.setTestemunho(t.isEmpty() ? null : t);
+        }
         rating.setUpdatedAt(now);
         organizerRatingRepository.save(rating);
 
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("myOrganizerRating", stars);
+        if (rating.getTestemunho() != null) {
+            out.put("myOrganizerTestimony", rating.getTestemunho());
+        }
         out.put("canRateOrganizer", true);
         averageForOrganizer(v.getLiderId()).ifPresent(avg -> out.put("organizerRating", avg));
         out.put("organizerRatingCount", countForOrganizer(v.getLiderId()));
