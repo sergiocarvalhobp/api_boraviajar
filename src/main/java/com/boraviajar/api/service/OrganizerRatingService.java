@@ -35,6 +35,12 @@ public class OrganizerRatingService {
         return v.getDataFim() != null && !v.getDataFim().isAfter(LocalDate.now());
     }
 
+    private boolean isConfirmedParticipant(long viagemId, long userId) {
+        return participanteRepository.findByViagemIdAndUserId(viagemId, userId)
+                .map(p -> "confirmado".equalsIgnoreCase(p.getStatus()))
+                .orElse(false);
+    }
+
     public Optional<Double> averageForOrganizer(long organizerUserId) {
         try {
             Double avg = organizerRatingRepository.averageStarsByOrganizerUserId(organizerUserId);
@@ -79,11 +85,7 @@ public class OrganizerRatingService {
             }
 
             boolean isLeader = v.getLiderId().equals(viewer.getId());
-            boolean isParticipant = participanteRepository
-                    .findByViagemIdAndUserId(v.getId(), viewer.getId())
-                    .isPresent();
-
-            boolean canRate = finished && isParticipant && !isLeader;
+            boolean canRate = finished && isConfirmedParticipant(v.getId(), viewer.getId()) && !isLeader;
             tripMap.put("canRateOrganizer", canRate);
 
             if (canRate || isLeader) {
@@ -117,10 +119,7 @@ public class OrganizerRatingService {
         if (count > 0) out.put("organizerRatingCount", count);
 
         boolean isLeader = viewer.getId().equals(v.getLiderId());
-        boolean isParticipant = participanteRepository
-                .findByViagemIdAndUserId(v.getId(), viewer.getId())
-                .isPresent();
-        boolean canRate = isTripFinished(v) && isParticipant && !isLeader;
+        boolean canRate = isTripFinished(v) && isConfirmedParticipant(v.getId(), viewer.getId()) && !isLeader;
 
         out.put("canRateOrganizer", canRate);
         organizerRatingRepository
@@ -156,10 +155,10 @@ public class OrganizerRatingService {
                     "O organizador não pode avaliar a própria viagem");
         }
 
-        if (participanteRepository.findByViagemIdAndUserId(v.getId(), rater.getId()).isEmpty()) {
+        if (!isConfirmedParticipant(v.getId(), rater.getId())) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "Apenas participantes podem avaliar o organizador");
+                    "A avaliação só é permitida após o organizador confirmar sua participação");
         }
 
         Instant now = Instant.now();

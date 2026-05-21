@@ -25,7 +25,13 @@ public class SystemController {
         return Map.of(
                 "api", "api-boraviajar",
                 "version", "0.1.0-SNAPSHOT",
-                "securityRules", "2026-05-15-mobile-auth-v2",
-                "mobileAuthTokenPublic", true);
+                "securityRules", "2026-05-20-ratings-chat-v1",
+                "mobileAuthTokenPublic", true,
+                "features", Map.of(
+                        "organizerRating", true,
+                        "postOrganizerRating", true,
+                        "participanteStatusPost", true,
+                        "chatConfirmadoOnly", true,
+                        "chatReadOnlyAfterTripEnd", true));
     }
 }
