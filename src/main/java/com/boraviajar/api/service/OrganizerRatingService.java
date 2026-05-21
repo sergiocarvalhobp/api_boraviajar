@@ -7,6 +7,8 @@ import com.boraviajar.api.repo.OrganizerRatingRepository;
 import com.boraviajar.api.repo.ParticipanteRepository;
 import com.boraviajar.api.repo.ViagemRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class OrganizerRatingService {
 
+    private static final Logger log = LoggerFactory.getLogger(OrganizerRatingService.class);
+
     private final OrganizerRatingRepository organizerRatingRepository;
     private final ViagemRepository viagemRepository;
     private final ParticipanteRepository participanteRepository;
@@ -31,45 +35,65 @@ public class OrganizerRatingService {
     }
 
     public Optional<Double> averageForOrganizer(long organizerUserId) {
-        Double avg = organizerRatingRepository.averageStarsByOrganizerUserId(organizerUserId);
-        if (avg == null) return Optional.empty();
-        return Optional.of(Math.round(avg * 10.0) / 10.0);
+        try {
+            Double avg = organizerRatingRepository.averageStarsByOrganizerUserId(organizerUserId);
+            if (avg == null) return Optional.empty();
+            return Optional.of(Math.round(avg * 10.0) / 10.0);
+        } catch (Exception e) {
+            log.warn("Média de avaliação indisponível (tabela organizer_ratings?): {}", e.getMessage());
+            return Optional.empty();
+        }
     }
 
     public long countForOrganizer(long organizerUserId) {
-        return organizerRatingRepository.countByOrganizerUserId(organizerUserId);
+        try {
+            return organizerRatingRepository.countByOrganizerUserId(organizerUserId);
+        } catch (Exception e) {
+            log.warn("Contagem de avaliações indisponível: {}", e.getMessage());
+            return 0;
+        }
     }
 
     public void enrichLeaderMap(Map<String, Object> leaderMap, long organizerUserId) {
-        averageForOrganizer(organizerUserId).ifPresent(avg ->
-                leaderMap.put("organizerRating", avg));
-        long count = countForOrganizer(organizerUserId);
-        if (count > 0) {
-            leaderMap.put("organizerRatingCount", count);
+        try {
+            averageForOrganizer(organizerUserId).ifPresent(avg ->
+                    leaderMap.put("organizerRating", avg));
+            long count = countForOrganizer(organizerUserId);
+            if (count > 0) {
+                leaderMap.put("organizerRatingCount", count);
+            }
+        } catch (Exception e) {
+            log.warn("enrichLeaderMap ignorado: {}", e.getMessage());
         }
     }
 
     public void enrichTripMap(Map<String, Object> tripMap, Viagem v, User viewer) {
-        boolean finished = isTripFinished(v);
-        tripMap.put("tripFinished", finished);
+        try {
+            boolean finished = isTripFinished(v);
+            tripMap.put("tripFinished", finished);
 
-        if (viewer == null) {
-            tripMap.put("canRateOrganizer", false);
-            return;
-        }
+            if (viewer == null) {
+                tripMap.put("canRateOrganizer", false);
+                return;
+            }
 
-        boolean isLeader = v.getLiderId().equals(viewer.getId());
-        boolean isParticipant = participanteRepository
-                .findByViagemIdAndUserId(v.getId(), viewer.getId())
-                .isPresent();
+            boolean isLeader = v.getLiderId().equals(viewer.getId());
+            boolean isParticipant = participanteRepository
+                    .findByViagemIdAndUserId(v.getId(), viewer.getId())
+                    .isPresent();
 
-        boolean canRate = finished && isParticipant && !isLeader;
-        tripMap.put("canRateOrganizer", canRate);
+            boolean canRate = finished && isParticipant && !isLeader;
+            tripMap.put("canRateOrganizer", canRate);
 
-        if (canRate || isLeader) {
-            organizerRatingRepository
-                    .findByViagemIdAndRaterUserId(v.getId(), viewer.getId())
-                    .ifPresent(r -> tripMap.put("myOrganizerRating", r.getEstrelas()));
+            if (canRate || isLeader) {
+                organizerRatingRepository
+                        .findByViagemIdAndRaterUserId(v.getId(), viewer.getId())
+                        .ifPresent(r -> tripMap.put("myOrganizerRating", r.getEstrelas()));
+            }
+        } catch (Exception e) {
+            log.warn("enrichTripMap ignorado: {}", e.getMessage());
+            tripMap.putIfAbsent("tripFinished", isTripFinished(v));
+            tripMap.putIfAbsent("canRateOrganizer", false);
         }
     }
 

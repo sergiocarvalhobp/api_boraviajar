@@ -35,13 +35,21 @@ public class TripService {
         return listAll().stream().map(v -> toTripMap(v, viewer)).toList();
     }
 
-    public Map<String, Object> listPageEnriched(User viewer, int offset, int limit) {
+    public Map<String, Object> listPageEnriched(User viewer, int offset, int limit, boolean apenasAtivas) {
         int safeLimit = Math.min(50, Math.max(1, limit));
         int safeOffset = Math.max(0, offset);
         int page = safeOffset / safeLimit;
-        List<Viagem> rows = viagemRepository.findAllByOrderByCreatedAtDesc(
-                PageRequest.of(page, safeLimit));
-        long total = viagemRepository.count();
+        List<Viagem> rows;
+        long total;
+        if (apenasAtivas) {
+            LocalDate hoje = LocalDate.now();
+            rows = viagemRepository.findAllByDataFimGreaterThanEqualOrderByCreatedAtDesc(
+                    hoje, PageRequest.of(page, safeLimit));
+            total = viagemRepository.countByDataFimGreaterThanEqual(hoje);
+        } else {
+            rows = viagemRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(page, safeLimit));
+            total = viagemRepository.count();
+        }
         return toPagedResponse(rows, viewer, safeOffset, safeLimit, total);
     }
 
@@ -50,17 +58,19 @@ public class TripService {
             String destino, String estado, String cidade, String atrativo,
             LocalDate dataInicio, LocalDate dataFim) {
         return listByFilterPageEnriched(
-                viewer, destino, estado, cidade, atrativo, dataInicio, dataFim, 0, Integer.MAX_VALUE);
+                viewer, destino, estado, cidade, atrativo, dataInicio, dataFim, 0, Integer.MAX_VALUE, false);
     }
 
     public Map<String, Object> listByFilterPageEnriched(
             User viewer,
             String destino, String estado, String cidade, String atrativo,
             LocalDate dataInicio, LocalDate dataFim,
-            int offset, int limit) {
+            int offset, int limit,
+            boolean apenasAtivas) {
         int safeLimit = Math.min(50, Math.max(1, limit));
         int safeOffset = Math.max(0, offset);
-        FilterQuery fq = buildFilterQuery(destino, estado, cidade, atrativo, dataInicio, dataFim);
+        FilterQuery fq = buildFilterQuery(
+                destino, estado, cidade, atrativo, dataInicio, dataFim, apenasAtivas);
         List<Viagem> rows = fq.list(safeOffset, safeLimit);
         long total = fq.count();
         return toPagedResponse(rows, viewer, safeOffset, safeLimit, total);
@@ -85,15 +95,20 @@ public class TripService {
     /** Equivalente a getViagensByFilter no Node. */
     public List<Viagem> listByFilter(String destino, String estado, String cidade, String atrativo,
                                      LocalDate dataInicio, LocalDate dataFim) {
-        return buildFilterQuery(destino, estado, cidade, atrativo, dataInicio, dataFim)
+        return buildFilterQuery(destino, estado, cidade, atrativo, dataInicio, dataFim, false)
                 .list(0, Integer.MAX_VALUE);
     }
 
     private FilterQuery buildFilterQuery(
             String destino, String estado, String cidade, String atrativo,
-            LocalDate dataInicio, LocalDate dataFim) {
+            LocalDate dataInicio, LocalDate dataFim,
+            boolean apenasAtivas) {
         StringBuilder where = new StringBuilder(" where 1=1");
         Map<String, Object> params = new HashMap<>();
+        if (apenasAtivas) {
+            where.append(" and v.dataFim >= :hoje");
+            params.put("hoje", LocalDate.now());
+        }
         if (estado != null && !estado.isBlank()) {
             where.append(" and v.estado = :estado");
             params.put("estado", estado);

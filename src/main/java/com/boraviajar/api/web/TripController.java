@@ -25,9 +25,11 @@ public class TripController {
     @GetMapping
     public Map<String, Object> list(
             @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "10") int limit
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(defaultValue = "true") boolean apenasAtivas
     ) {
-        return tripService.listPageEnriched(CurrentUser.optionalOrNull(), offset, limit);
+        return tripService.listPageEnriched(
+                CurrentUser.optionalOrNull(), offset, limit, apenasAtivas);
     }
 
     @GetMapping("/filter")
@@ -39,11 +41,12 @@ public class TripController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
             @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "10") int limit
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(defaultValue = "true") boolean apenasAtivas
     ) {
         return tripService.listByFilterPageEnriched(
                 CurrentUser.optionalOrNull(),
-                destino, estado, cidade, atrativo, dataInicio, dataFim, offset, limit);
+                destino, estado, cidade, atrativo, dataInicio, dataFim, offset, limit, apenasAtivas);
     }
 
     @GetMapping("/{id}")
