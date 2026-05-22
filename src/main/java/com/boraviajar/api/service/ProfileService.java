@@ -39,10 +39,15 @@ public class ProfileService {
         pub.put("destinosFavoritos", u.getDestinosFavoritos());
         pub.put("instagram", u.getInstagram());
         pub.put("createdAt", u.getCreatedAt());
-        organizerRatingService.averageForOrganizer(userId)
-                .ifPresent(avg -> pub.put("organizerRating", avg));
+        organizerRatingService.averageForOrganizer(userId).ifPresent(avg -> {
+            pub.put("organizerRating", avg);
+            pub.put("mediaOrganizador", avg);
+        });
         long ratingCount = organizerRatingService.countForOrganizer(userId);
-        if (ratingCount > 0) pub.put("organizerRatingCount", ratingCount);
+        if (ratingCount > 0) {
+            pub.put("organizerRatingCount", ratingCount);
+            pub.put("totalAvaliacoesOrganizador", ratingCount);
+        }
 
         List<Viagem> criadas = viagemRepository.findAllByLiderIdOrderByCreatedAtDesc(userId);
         Set<Long> pids = participanteRepository.findByUserId(userId).stream()

@@ -63,11 +63,14 @@ public class OrganizerRatingService {
 
     public void enrichLeaderMap(Map<String, Object> leaderMap, long organizerUserId) {
         try {
-            averageForOrganizer(organizerUserId).ifPresent(avg ->
-                    leaderMap.put("organizerRating", avg));
+            averageForOrganizer(organizerUserId).ifPresent(avg -> {
+                leaderMap.put("organizerRating", avg);
+                leaderMap.put("mediaOrganizador", avg);
+            });
             long count = countForOrganizer(organizerUserId);
             if (count > 0) {
                 leaderMap.put("organizerRatingCount", count);
+                leaderMap.put("totalAvaliacoesOrganizador", count);
             }
         } catch (Exception e) {
             log.warn("enrichLeaderMap ignorado: {}", e.getMessage());
@@ -114,9 +117,15 @@ public class OrganizerRatingService {
         out.put("organizerUserId", v.getLiderId());
         out.put("tripFinished", isTripFinished(v));
 
-        averageForOrganizer(v.getLiderId()).ifPresent(avg -> out.put("organizerRating", avg));
+        averageForOrganizer(v.getLiderId()).ifPresent(avg -> {
+            out.put("organizerRating", avg);
+            out.put("mediaOrganizador", avg);
+        });
         long count = countForOrganizer(v.getLiderId());
-        if (count > 0) out.put("organizerRatingCount", count);
+        if (count > 0) {
+            out.put("organizerRatingCount", count);
+            out.put("totalAvaliacoesOrganizador", count);
+        }
 
         boolean isLeader = viewer.getId().equals(v.getLiderId());
         boolean canRate = isTripFinished(v) && isConfirmedParticipant(v.getId(), viewer.getId()) && !isLeader;
@@ -152,13 +161,13 @@ public class OrganizerRatingService {
         if (v.getLiderId().equals(rater.getId())) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "O organizador não pode avaliar a própria viagem");
+                    "Quem criou a viagem não pode avaliar a própria viagem");
         }
 
         if (!isConfirmedParticipant(v.getId(), rater.getId())) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "A avaliação só é permitida após o organizador confirmar sua participação");
+                    "A avaliação só é permitida para participantes confirmados da viagem");
         }
 
         Instant now = Instant.now();
