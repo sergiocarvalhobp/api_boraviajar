@@ -52,7 +52,29 @@ curl -s -o /dev/null -w "public_session:%{http_code}\n" -X POST "https://api.bor
 | **401** com JSON `error` | Rota pública OK (token `test` inválido, esperado) |
 | **503** | Falta `AUTH0_DOMAIN` ou `JWT_SECRET` em `/etc/api-boraviajar.env` |
 
-## 4. POST com sessão (avaliação / join)
+## 4. Tabela `organizer_ratings` (avaliação do organizador)
+
+Se o log mostrar `Table 'boraviajar_db.organizer_ratings' doesn't exist`, crie a tabela no MySQL:
+
+```bash
+mysql -u root -p boraviajar_db < /opt/api_boraviajar/deploy/migrations/001_organizer_ratings.sql
+```
+
+Confirme:
+
+```bash
+mysql -u root -p boraviajar_db -e "SHOW TABLES LIKE 'organizer_ratings';"
+```
+
+Se a tabela existir **sem** coluna `testemunho`:
+
+```bash
+mysql -u root -p boraviajar_db < /opt/api_boraviajar/src/main/resources/db/organizer_ratings_add_testemunho.sql
+```
+
+Depois disso, teste de novo `POST /api/v1/participantes/avaliar-organizador` no app.
+
+## 5. POST com sessão (avaliação / join)
 
 Se `GET /trips/{id}` mostra `myStatus` mas `POST .../avaliar-organizador` retorna **401**:
 
