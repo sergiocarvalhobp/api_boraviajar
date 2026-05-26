@@ -5,6 +5,7 @@ import com.boraviajar.api.entity.User;
 import com.boraviajar.api.entity.Viagem;
 import com.boraviajar.api.repo.OrganizerRatingRepository;
 import com.boraviajar.api.repo.ParticipanteRepository;
+import com.boraviajar.api.repo.UserRepository;
 import com.boraviajar.api.repo.ViagemRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -16,7 +17,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -29,6 +32,7 @@ public class OrganizerRatingService {
     private final OrganizerRatingRepository organizerRatingRepository;
     private final ViagemRepository viagemRepository;
     private final ParticipanteRepository participanteRepository;
+    private final UserRepository userRepository;
 
     /** Viagem encerrada para avaliação: último dia da viagem ou depois. */
     public boolean isTripFinished(Viagem v) {
@@ -88,19 +92,23 @@ public class OrganizerRatingService {
             }
 
             boolean isLeader = v.getLiderId().equals(viewer.getId());
-            boolean canRate = finished && isConfirmedParticipant(v.getId(), viewer.getId()) && !isLeader;
+            boolean alreadyRated = organizerRatingRepository
+                    .findByViagemIdAndRaterUserId(v.getId(), viewer.getId())
+                    .isPresent();
+            boolean canRate = finished
+                    && isConfirmedParticipant(v.getId(), viewer.getId())
+                    && !isLeader
+                    && !alreadyRated;
             tripMap.put("canRateOrganizer", canRate);
 
-            if (canRate || isLeader) {
-                organizerRatingRepository
-                        .findByViagemIdAndRaterUserId(v.getId(), viewer.getId())
-                        .ifPresent(r -> {
-                            tripMap.put("myOrganizerRating", r.getEstrelas());
-                            if (r.getTestemunho() != null && !r.getTestemunho().isBlank()) {
-                                tripMap.put("myOrganizerTestimony", r.getTestemunho());
-                            }
-                        });
-            }
+            organizerRatingRepository
+                    .findByViagemIdAndRaterUserId(v.getId(), viewer.getId())
+                    .ifPresent(r -> {
+                        tripMap.put("myOrganizerRating", r.getEstrelas());
+                        if (r.getTestemunho() != null && !r.getTestemunho().isBlank()) {
+                            tripMap.put("myOrganizerTestimony", r.getTestemunho());
+                        }
+                    });
         } catch (Exception e) {
             log.warn("enrichTripMap ignorado: {}", e.getMessage());
             tripMap.putIfAbsent("tripFinished", isTripFinished(v));
@@ -128,7 +136,13 @@ public class OrganizerRatingService {
         }
 
         boolean isLeader = viewer.getId().equals(v.getLiderId());
-        boolean canRate = isTripFinished(v) && isConfirmedParticipant(v.getId(), viewer.getId()) && !isLeader;
+        boolean alreadyRated = organizerRatingRepository
+                .findByViagemIdAndRaterUserId(v.getId(), viewer.getId())
+                .isPresent();
+        boolean canRate = isTripFinished(v)
+                && isConfirmedParticipant(v.getId(), viewer.getId())
+                && !isLeader
+                && !alreadyRated;
 
         out.put("canRateOrganizer", canRate);
         organizerRatingRepository
@@ -141,6 +155,69 @@ public class OrganizerRatingService {
                 });
 
         return out;
+    }
+
+    /** Testemunhos e notas desta viagem (participantes confirmados + organizador). */
+    public Map<String, Object> listForTrip(long tripId, User viewer) {
+        Viagem v = viagemRepository.findById(tripId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Viagem não encontrada"));
+
+        if (!canViewTripRatings(v, viewer)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Acesso às avaliações desta viagem não permitido");
+        }
+
+        List<Map<String, Object>> reviews = new ArrayList<>();
+        for (OrganizerRating r : organizerRatingRepository.findByViagemIdOrderByUpdatedAtDesc(tripId)) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("stars", r.getEstrelas());
+            if (r.getTestemunho() != null && !r.getTestemunho().isBlank()) {
+                row.put("testemunho", r.getTestemunho());
+            }
+            row.put("createdAt", r.getUpdatedAt() != null ? r.getUpdatedAt() : r.getCreatedAt());
+            row.put("isMine", r.getRaterUserId().equals(viewer.getId()));
+            userRepository.findById(r.getRaterUserId()).ifPresent(u -> row.put("rater", toRaterMap(u)));
+            reviews.add(row);
+        }
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("tripId", tripId);
+        out.put("reviews", reviews);
+        out.put("tripReviewCount", reviews.size());
+        averageForOrganizer(v.getLiderId()).ifPresent(avg -> {
+            out.put("organizerRating", avg);
+            out.put("mediaOrganizador", avg);
+        });
+        long globalCount = countForOrganizer(v.getLiderId());
+        if (globalCount > 0) {
+            out.put("organizerRatingCount", globalCount);
+        }
+        return out;
+    }
+
+    private boolean canViewTripRatings(Viagem v, User viewer) {
+        if (!isTripFinished(v)) {
+            return false;
+        }
+        if (v.getLiderId().equals(viewer.getId())) {
+            return true;
+        }
+        if (isConfirmedParticipant(v.getId(), viewer.getId())) {
+            return true;
+        }
+        return organizerRatingRepository
+                .findByViagemIdAndRaterUserId(v.getId(), viewer.getId())
+                .isPresent();
+    }
+
+    private static Map<String, Object> toRaterMap(User u) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", u.getId());
+        m.put("name", u.getName());
+        m.put("foto", u.getAvatarUrl());
+        m.put("avatarUrl", u.getAvatarUrl());
+        return m;
     }
 
     @Transactional
@@ -194,7 +271,7 @@ public class OrganizerRatingService {
         if (rating.getTestemunho() != null) {
             out.put("myOrganizerTestimony", rating.getTestemunho());
         }
-        out.put("canRateOrganizer", true);
+        out.put("canRateOrganizer", false);
         averageForOrganizer(v.getLiderId()).ifPresent(avg -> out.put("organizerRating", avg));
         out.put("organizerRatingCount", countForOrganizer(v.getLiderId()));
         return out;

@@ -65,6 +65,12 @@ public class TripController {
         return organizerRatingService.getState(id, CurrentUser.require());
     }
 
+    /** Lista testemunhos e notas desta viagem (autenticado). */
+    @GetMapping("/{id}/organizer-ratings")
+    public Map<String, Object> listOrganizerRatings(@PathVariable long id) {
+        return organizerRatingService.listForTrip(id, CurrentUser.require());
+    }
+
     @PutMapping("/{id}/avaliar-organizador")
     public Map<String, Object> submitOrganizerRatingPutAlt(
             @PathVariable long id,

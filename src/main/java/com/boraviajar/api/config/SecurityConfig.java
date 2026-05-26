@@ -47,6 +47,8 @@ public class SecurityConfig {
                         .requestMatchers(new AntPathRequestMatcher("/api/v1/system/health", "GET")).permitAll()
                         .requestMatchers(new AntPathRequestMatcher("/api/v1/system/deploy-check", "GET")).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/trips").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/trips/*/organizer-ratings")
+                        .authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/trips/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/messages/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/participantes/**").permitAll()
