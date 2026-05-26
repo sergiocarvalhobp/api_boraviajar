@@ -1,8 +1,11 @@
 package com.boraviajar.api.web;
 
+import com.boraviajar.api.service.OrganizerRatingService;
 import com.boraviajar.api.service.ParticipanteService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
@@ -12,6 +15,7 @@ import java.util.Map;
 public class ParticipanteController {
 
     private final ParticipanteService participanteService;
+    private final OrganizerRatingService organizerRatingService;
 
     @PostMapping("/join")
     public Map<String, Object> join(@RequestBody ViagemIdBody body) {
@@ -48,7 +52,22 @@ public class ParticipanteController {
         return participanteService.updateStatus(participanteId, body.status(), CurrentUser.require());
     }
 
+    /** POST — fallback quando proxy bloqueia POST/PUT em /trips/{id}/organizer-rating. */
+    @PostMapping("/organizer-rating")
+    public Map<String, Object> submitOrganizerRating(@RequestBody OrganizerRatingBody body) {
+        if (body.viagemId() == null || body.viagemId() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Campo viagemId é obrigatório");
+        }
+        if (body.stars() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Campo stars é obrigatório");
+        }
+        return organizerRatingService.submit(
+                body.viagemId(), CurrentUser.require(), body.stars(), body.testemunho());
+    }
+
     public record ViagemIdBody(long viagemId) {}
 
     public record StatusBody(String status) {}
+
+    public record OrganizerRatingBody(Long viagemId, Integer stars, String testemunho) {}
 }

@@ -30,6 +30,7 @@ public class SystemController {
                 "features", Map.of(
                         "organizerRating", true,
                         "postOrganizerRating", true,
+                        "participanteOrganizerRatingPost", true,
                         "participanteStatusPost", true,
                         "chatConfirmadoOnly", true,
                         "chatReadOnlyAfterTripEnd", true));
