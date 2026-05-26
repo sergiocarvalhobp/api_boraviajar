@@ -8,6 +8,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -45,13 +46,13 @@ public class SecurityConfig {
                         .requestMatchers(new AntPathRequestMatcher("/api/v1/health", "GET")).permitAll()
                         .requestMatchers(new AntPathRequestMatcher("/api/v1/system/health", "GET")).permitAll()
                         .requestMatchers(new AntPathRequestMatcher("/api/v1/system/deploy-check", "GET")).permitAll()
-                        .requestMatchers(new AntPathRequestMatcher("/api/v1/trips", "GET")).permitAll()
-                        .requestMatchers(new AntPathRequestMatcher("/api/v1/trips/**", "GET")).permitAll()
-                        .requestMatchers(new AntPathRequestMatcher("/api/v1/messages/**", "GET")).permitAll()
-                        .requestMatchers(new AntPathRequestMatcher("/api/v1/participantes/**", "GET")).permitAll()
-                        .requestMatchers(new AntPathRequestMatcher("/api/v1/profile/public/**", "GET")).permitAll()
-                        .requestMatchers(new AntPathRequestMatcher("/api/v1/dicas/**", "GET")).permitAll()
-                        .requestMatchers(new AntPathRequestMatcher("/api/v1/push/vapid-public-key", "GET")).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/trips").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/trips/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/messages/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/participantes/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/profile/public/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/dicas/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/push/vapid-public-key").permitAll()
                         .requestMatchers(new AntPathRequestMatcher("/**", "OPTIONS")).permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
