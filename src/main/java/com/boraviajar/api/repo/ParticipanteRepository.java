@@ -15,5 +15,7 @@ public interface ParticipanteRepository extends JpaRepository<Participante, Long
 
     long countByViagemId(Long viagemId);
 
+    long countByViagemIdAndStatus(Long viagemId, String status);
+
     void deleteByViagemIdAndUserId(Long viagemId, Long userId);
 }

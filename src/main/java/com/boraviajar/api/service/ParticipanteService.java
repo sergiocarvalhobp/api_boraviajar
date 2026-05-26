@@ -22,8 +22,13 @@ public class ParticipanteService {
     private final ParticipanteRepository participanteRepository;
     private final ViagemRepository viagemRepository;
 
+    /** Vagas ocupadas = participantes com status {@code confirmado}. */
     public long count(long viagemId) {
-        return participanteRepository.countByViagemId(viagemId);
+        return countConfirmados(viagemId);
+    }
+
+    public long countConfirmados(long viagemId) {
+        return participanteRepository.countByViagemIdAndStatus(viagemId, "confirmado");
     }
 
     public boolean isParticipante(long viagemId, long userId) {
@@ -45,12 +50,7 @@ public class ParticipanteService {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "Esta viagem já encerrou");
         }
-        if (v.getMaxVagas() != null) {
-            long c = participanteRepository.countByViagemId(viagemId);
-            if (c >= v.getMaxVagas()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Esta viagem já está com todas as vagas preenchidas");
-            }
-        }
+        // Interessado não ocupa vaga — limite checado só na confirmação pelo organizador.
         Participante p = new Participante();
         p.setViagemId(viagemId);
         p.setUserId(user.getId());
@@ -95,6 +95,16 @@ public class ParticipanteService {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Status inválido. Use: interessado, confirmado ou recusado");
+        }
+        if (normalized.equals("confirmado")
+                && v.getMaxVagas() != null
+                && !"confirmado".equalsIgnoreCase(p.getStatus())) {
+            long confirmados = countConfirmados(p.getViagemId());
+            if (confirmados >= v.getMaxVagas()) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Todas as vagas já estão preenchidas. Libere uma vaga antes de confirmar.");
+            }
         }
         p.setStatus(normalized);
         p.setUpdatedAt(Instant.now());

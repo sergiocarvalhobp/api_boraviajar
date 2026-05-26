@@ -195,7 +195,8 @@ public class TripService {
         out.put("viagem", v);
         out.put("leader", leader);
         out.put("participants", withUsers);
-        out.put("participantCount", parts.size());
+        out.put("participantCount",
+                participanteRepository.countByViagemIdAndStatus(viagemId, "confirmado"));
         return out;
     }
 
@@ -244,7 +245,8 @@ public class TripService {
         m.put("tipo", v.getTipo());
         m.put("maxVagas", v.getMaxVagas());
         m.put("createdAt", v.getCreatedAt());
-        m.put("participantesCount", participanteRepository.countByViagemId(v.getId()));
+        m.put("participantesCount",
+                participanteRepository.countByViagemIdAndStatus(v.getId(), "confirmado"));
         userRepository.findById(v.getLiderId()).ifPresent(leader -> {
             Map<String, Object> leaderMap = toUserMap(leader);
             organizerRatingService.enrichLeaderMap(leaderMap, leader.getId());
