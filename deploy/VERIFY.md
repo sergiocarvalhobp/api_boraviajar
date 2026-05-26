@@ -51,3 +51,11 @@ curl -s -o /dev/null -w "public_session:%{http_code}\n" -X POST "https://api.bor
 | **403** e `deploy-check` **404** | JAR antigo — repetir passo 2 |
 | **401** com JSON `error` | Rota pública OK (token `test` inválido, esperado) |
 | **503** | Falta `AUTH0_DOMAIN` ou `JWT_SECRET` em `/etc/api-boraviajar.env` |
+
+## 4. POST com sessão (avaliação / join)
+
+Se `GET /trips/{id}` mostra `myStatus` mas `POST .../avaliar-organizador` retorna **401**:
+
+1. Confirme JAR com `mobilePostSessionBodyFallback: true` em `deploy-check`
+2. Atualize nginx (`deploy/nginx-api.boraviajar.conf.example`) — repasse `Authorization`, `X-App-Session` e `Cookie`
+3. App mobile envia também `sessionToken` no JSON e `app_session_id` na query (fallback)

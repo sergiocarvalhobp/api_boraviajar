@@ -2,6 +2,8 @@ package com.boraviajar.api.security;
 
 import com.boraviajar.api.entity.User;
 import com.boraviajar.api.repo.UserRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -15,6 +17,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.ContentCachingRequestWrapper;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -27,9 +30,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String SESSION_COOKIE = "app_session_id";
     /** Header alternativo — alguns proxies removem Authorization em POST. */
     private static final String SESSION_HEADER = "X-App-Session";
+  /** Corpo JSON — fallback quando nginx remove headers em POST. */
+    private static final String SESSION_BODY_FIELD = "sessionToken";
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -41,7 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        String auth = resolveAuthorizationLikeHeader(request);
+        String auth = resolveAuthorizationLikeHeader(request, isMutatingMethod(request.getMethod()));
         Optional<String> openIdOpt = jwtService.parseOpenId(auth);
         if (openIdOpt.isPresent()) {
             Optional<User> userOpt = userRepository.findByOpenId(openIdOpt.get());
@@ -92,9 +98,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Ordem: Authorization Bearer → X-App-Session → Cookie (header ou getCookies).
+     * Ordem: Authorization Bearer → X-App-Session → Cookie → query {@code app_session_id}
+     * → corpo JSON {@code sessionToken} (só em POST/PUT/PATCH).
      */
-    private String resolveAuthorizationLikeHeader(HttpServletRequest request) {
+    private String resolveAuthorizationLikeHeader(HttpServletRequest request, boolean mutating) {
         String auth = request.getHeader("Authorization");
         if (auth != null && auth.startsWith("Bearer ")) {
             return auth;
@@ -123,7 +130,47 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
 
+        if (mutating) {
+            String fromQuery = request.getParameter(SESSION_COOKIE);
+            if (fromQuery != null && !fromQuery.isBlank()) {
+                return "Bearer " + fromQuery.trim();
+            }
+
+            String fromBody = sessionTokenFromJsonBody(request);
+            if (fromBody != null) {
+                return "Bearer " + fromBody;
+            }
+        }
+
         return auth;
+    }
+
+    private String sessionTokenFromJsonBody(HttpServletRequest request) {
+        if (!(request instanceof ContentCachingRequestWrapper wrapper)) {
+            return null;
+        }
+        try {
+            byte[] buf = wrapper.getContentAsByteArray();
+            if (buf.length == 0) {
+                wrapper.getInputStream().readAllBytes();
+                buf = wrapper.getContentAsByteArray();
+            }
+            if (buf.length == 0) {
+                return null;
+            }
+            JsonNode root = objectMapper.readTree(buf);
+            JsonNode token = root.get(SESSION_BODY_FIELD);
+            if (token == null || !token.isTextual()) {
+                token = root.get(SESSION_COOKIE);
+            }
+            if (token != null && token.isTextual()) {
+                String value = token.asText().trim();
+                return value.isEmpty() ? null : value;
+            }
+        } catch (Exception e) {
+            log.debug("Não foi possível ler {} do corpo JSON: {}", SESSION_BODY_FIELD, e.getMessage());
+        }
+        return null;
     }
 
     private static String tokenFromCookieHeader(String cookieHeader) {

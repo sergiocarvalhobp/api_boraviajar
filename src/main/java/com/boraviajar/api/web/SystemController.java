@@ -25,9 +25,10 @@ public class SystemController {
         return Map.of(
                 "api", "api-boraviajar",
                 "version", "0.1.0-SNAPSHOT",
-                "securityRules", "2026-05-20-ratings-chat-v1",
+                "securityRules", "2026-05-26-mobile-post-session-body-v1",
                 "mobileAuthTokenPublic", true,
                 "mobileAuthHeaderFallback", true,
+                "mobilePostSessionBodyFallback", true,
                 "features", Map.of(
                         "sessionCheckRating", true,
                         "organizerRating", true,
