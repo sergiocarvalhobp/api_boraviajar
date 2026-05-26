@@ -25,6 +25,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
     private static final String SESSION_COOKIE = "app_session_id";
+    /** Header alternativo — alguns proxies removem Authorization em POST. */
+    private static final String SESSION_HEADER = "X-App-Session";
+    /** Query usada pelo app mobile quando a borda remove headers de auth. */
+    private static final String SESSION_QUERY = "access_token";
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
@@ -55,20 +59,44 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         "JWT com openId válido mas sem utilizador na tabela users (mesma BD que o Node?). openId={}",
                         openIdOpt.get());
             }
-        } else if (auth != null && auth.startsWith("Bearer ") && auth.length() > 7) {
-            String token = auth.substring(7).trim();
-            if (!token.isEmpty()) {
-                log.debug(
-                        "Bearer presente mas JWT rejeitado (assinatura/expiração) ou sem claim openId — confira JWT_SECRET igual ao do bora_viajar (Node).");
-            }
+        } else if (hasBearerLikeValue(auth)) {
+            log.debug(
+                    "Bearer presente mas JWT rejeitado (assinatura/expiração) ou sem claim openId — confira JWT_SECRET igual ao do bora_viajar (Node).");
+        } else if (isMutatingMethod(request.getMethod()) && looksLikeProtectedApi(request.getRequestURI())) {
+            log.warn(
+                    "POST/PUT/PATCH {} sem sessão reconhecida (Authorization={}, {}={}, Cookie={}, query {}={})",
+                    request.getRequestURI(),
+                    request.getHeader("Authorization") != null,
+                    SESSION_HEADER,
+                    request.getHeader(SESSION_HEADER) != null,
+                    request.getHeader("Cookie") != null,
+                    SESSION_QUERY,
+                    request.getParameter(SESSION_QUERY) != null);
         }
 
         filterChain.doFilter(request, response);
     }
 
+    private static boolean hasBearerLikeValue(String auth) {
+        return auth != null && auth.startsWith("Bearer ") && auth.length() > 7;
+    }
+
+    private static boolean isMutatingMethod(String method) {
+        if (method == null) return false;
+        return switch (method.toUpperCase()) {
+            case "POST", "PUT", "PATCH", "DELETE" -> true;
+            default -> false;
+        };
+    }
+
+    private static boolean looksLikeProtectedApi(String uri) {
+        return uri != null && uri.startsWith("/api/v1/")
+                && !uri.startsWith("/api/v1/public/")
+                && !uri.endsWith("/auth/token");
+    }
+
     /**
-     * Primeiro tenta Authorization: Bearer.
-     * Se a borda/nginx remover esse header, usa cookie app_session_id como fallback.
+     * Ordem: Authorization Bearer → X-App-Session → Cookie (header ou getCookies) → query access_token.
      */
     private String resolveAuthorizationLikeHeader(HttpServletRequest request) {
         String auth = request.getHeader("Authorization");
@@ -76,16 +104,48 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return auth;
         }
 
+        String sessionHeader = request.getHeader(SESSION_HEADER);
+        if (sessionHeader != null && !sessionHeader.isBlank()) {
+            String trimmed = sessionHeader.trim();
+            return trimmed.startsWith("Bearer ") ? trimmed : "Bearer " + trimmed;
+        }
+
+        String fromCookieHeader = tokenFromCookieHeader(request.getHeader("Cookie"));
+        if (fromCookieHeader != null) {
+            return "Bearer " + fromCookieHeader;
+        }
+
         Cookie[] cookies = request.getCookies();
-        if (cookies == null) return auth;
-        for (Cookie c : cookies) {
-            if (SESSION_COOKIE.equals(c.getName())) {
-                String token = c.getValue();
-                if (token != null && !token.isBlank()) {
-                    return "Bearer " + token.trim();
+        if (cookies != null) {
+            for (Cookie c : cookies) {
+                if (SESSION_COOKIE.equals(c.getName())) {
+                    String token = c.getValue();
+                    if (token != null && !token.isBlank()) {
+                        return "Bearer " + token.trim();
+                    }
                 }
             }
         }
+
+        String queryToken = request.getParameter(SESSION_QUERY);
+        if (queryToken != null && !queryToken.isBlank()) {
+            return "Bearer " + queryToken.trim();
+        }
+
         return auth;
+    }
+
+    private static String tokenFromCookieHeader(String cookieHeader) {
+        if (cookieHeader == null || cookieHeader.isBlank()) {
+            return null;
+        }
+        for (String part : cookieHeader.split(";")) {
+            String trimmed = part.trim();
+            if (trimmed.startsWith(SESSION_COOKIE + "=")) {
+                String token = trimmed.substring(SESSION_COOKIE.length() + 1).trim();
+                return token.isEmpty() ? null : token;
+            }
+        }
+        return null;
     }
 }

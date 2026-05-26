@@ -30,6 +30,13 @@ public class AuthController {
         return ResponseEntity.ok(CurrentUser.require());
     }
 
+    /** Mobile: confirma que POST autenticado chega ao Spring (diagnóstico de proxy/nginx). */
+    @PostMapping("/session-check")
+    public ResponseEntity<Map<String, Object>> sessionCheck() {
+        User u = CurrentUser.require();
+        return ResponseEntity.ok(Map.of("ok", true, "userId", u.getId()));
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<Map<String, Boolean>> logout() {
         return ResponseEntity.ok(Map.of("success", true));

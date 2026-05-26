@@ -2,8 +2,10 @@
 # A API Java costuma rodar em 127.0.0.1:8081 (ver PORT em /etc/api-boraviajar.env).
 #
 # IMPORTANTE: não bloquear POST em /api/v1/auth/token (login mobile).
-# Se só GET /health funcionar e POST /auth/token der 403, o Spring pode estar OK
-# e o nginx é quem nega (limit_except, auth_basic, outro location, etc.).
+# Se GET /auth/me funcionar mas POST (avaliação, chat, etc.) der 401, o proxy
+# provavelmente NÃO repassa Authorization — use as linhas abaixo:
+#   proxy_set_header Authorization $http_authorization;
+#   proxy_pass_request_headers on;
 
 server {
     listen 443 ssl http2;
