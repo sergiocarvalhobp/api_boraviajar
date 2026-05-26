@@ -30,6 +30,7 @@ public class SystemController {
                 "mobileAuthQueryFallback", true,
                 "mobileAuthHeaderFallback", true,
                 "features", Map.of(
+                        "authAvaliarViagemPost", true,
                         "authTripRatingPost", true,
                         "organizerRating", true,
                         "postOrganizerRating", true,

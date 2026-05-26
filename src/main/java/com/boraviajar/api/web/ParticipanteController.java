@@ -52,8 +52,8 @@ public class ParticipanteController {
         return participanteService.updateStatus(participanteId, body.status(), CurrentUser.require());
     }
 
-    /** POST — fallback quando proxy bloqueia POST/PUT em /trips/{id}/organizer-rating. */
-    @PostMapping("/organizer-rating")
+    /** POST — path sem {@code rating} (evita bloqueio nginx/WAF). */
+    @PostMapping("/avaliar-organizador")
     public Map<String, Object> submitOrganizerRating(@RequestBody OrganizerRatingBody body) {
         if (body.viagemId() == null || body.viagemId() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Campo viagemId é obrigatório");

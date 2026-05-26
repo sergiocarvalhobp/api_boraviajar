@@ -40,10 +40,10 @@ public class AuthController {
     }
 
     /**
-     * Salvar avaliação do organizador — mesmo prefixo de {@link #sessionCheck()},
-     * onde POST autenticado já funciona no mobile.
+     * Salvar avaliação do organizador.
+     * Path sem a palavra {@code rating} — alguns nginx/WAF removem Authorization nesses URLs.
      */
-    @PostMapping("/trip-rating")
+    @PostMapping("/avaliar-viagem")
     public ResponseEntity<Map<String, Object>> submitTripRating(@RequestBody TripRatingBody body) {
         if (body.viagemId() == null || body.viagemId() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Campo viagemId é obrigatório");

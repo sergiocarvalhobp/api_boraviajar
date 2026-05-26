@@ -65,6 +65,23 @@ public class TripController {
         return organizerRatingService.getState(id, CurrentUser.require());
     }
 
+    @PutMapping("/{id}/avaliar-organizador")
+    public Map<String, Object> submitOrganizerRatingPutAlt(
+            @PathVariable long id,
+            @RequestBody OrganizerRatingBody body
+    ) {
+        return submitOrganizerRating(id, body);
+    }
+
+    /** POST — path sem {@code rating} (evita bloqueio nginx/WAF no Authorization). */
+    @PostMapping("/{id}/avaliar-organizador")
+    public Map<String, Object> submitOrganizerRatingPostAlt(
+            @PathVariable long id,
+            @RequestBody OrganizerRatingBody body
+    ) {
+        return submitOrganizerRating(id, body);
+    }
+
     @PutMapping("/{id}/organizer-rating")
     public Map<String, Object> submitOrganizerRatingPut(
             @PathVariable long id,
