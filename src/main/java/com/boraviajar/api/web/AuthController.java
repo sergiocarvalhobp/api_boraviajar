@@ -32,27 +32,24 @@ public class AuthController {
         return ResponseEntity.ok(CurrentUser.require());
     }
 
-    /** Mobile: confirma que POST autenticado chega ao Spring (diagnóstico de proxy/nginx). */
-    @PostMapping("/session-check")
-    public ResponseEntity<Map<String, Object>> sessionCheck() {
-        User u = CurrentUser.require();
-        return ResponseEntity.ok(Map.of("ok", true, "userId", u.getId()));
-    }
-
     /**
-     * Salvar avaliação do organizador.
-     * Path sem a palavra {@code rating} — alguns nginx/WAF removem Authorization nesses URLs.
+     * Mobile: diagnóstico de sessão POST e salvamento de avaliação.
+     * <p>
+     * Corpo vazio ou sem {@code stars} → {@code {ok, userId}}.
+     * Com {@code viagemId} + {@code stars} → salva avaliação (mesma rota — nginx libera só este path).
      */
-    @PostMapping("/avaliar-viagem")
-    public ResponseEntity<Map<String, Object>> submitTripRating(@RequestBody TripRatingBody body) {
-        if (body.viagemId() == null || body.viagemId() <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Campo viagemId é obrigatório");
+    @PostMapping("/session-check")
+    public ResponseEntity<Map<String, Object>> sessionCheck(
+            @RequestBody(required = false) SessionActionBody body) {
+        User u = CurrentUser.require();
+        if (body != null && body.viagemId() != null && body.viagemId() > 0 && body.stars() != null) {
+            if (body.stars() < 1 || body.stars() > 5) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A nota deve ser entre 1 e 5");
+            }
+            return ResponseEntity.ok(
+                    organizerRatingService.submit(body.viagemId(), u, body.stars(), body.testemunho()));
         }
-        if (body.stars() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Campo stars é obrigatório");
-        }
-        return ResponseEntity.ok(organizerRatingService.submit(
-                body.viagemId(), CurrentUser.require(), body.stars(), body.testemunho()));
+        return ResponseEntity.ok(Map.of("ok", true, "userId", u.getId()));
     }
 
     @PostMapping("/logout")
@@ -66,5 +63,5 @@ public class AuthController {
         }
     }
 
-    public record TripRatingBody(Long viagemId, Integer stars, String testemunho) {}
+    public record SessionActionBody(Long viagemId, Integer stars, String testemunho) {}
 }

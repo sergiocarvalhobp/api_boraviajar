@@ -27,8 +27,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String SESSION_COOKIE = "app_session_id";
     /** Header alternativo — alguns proxies removem Authorization em POST. */
     private static final String SESSION_HEADER = "X-App-Session";
-    /** Query usada pelo app mobile quando a borda remove headers de auth. */
-    private static final String SESSION_QUERY = "access_token";
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
@@ -69,9 +67,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     request.getHeader("Authorization") != null,
                     SESSION_HEADER,
                     request.getHeader(SESSION_HEADER) != null,
-                    request.getHeader("Cookie") != null,
-                    SESSION_QUERY,
-                    request.getParameter(SESSION_QUERY) != null);
+                    request.getHeader("Cookie") != null);
         }
 
         filterChain.doFilter(request, response);
@@ -96,7 +92,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Ordem: Authorization Bearer → X-App-Session → Cookie (header ou getCookies) → query access_token.
+     * Ordem: Authorization Bearer → X-App-Session → Cookie (header ou getCookies).
      */
     private String resolveAuthorizationLikeHeader(HttpServletRequest request) {
         String auth = request.getHeader("Authorization");
@@ -125,11 +121,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     }
                 }
             }
-        }
-
-        String queryToken = request.getParameter(SESSION_QUERY);
-        if (queryToken != null && !queryToken.isBlank()) {
-            return "Bearer " + queryToken.trim();
         }
 
         return auth;

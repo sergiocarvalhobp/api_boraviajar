@@ -27,11 +27,9 @@ public class SystemController {
                 "version", "0.1.0-SNAPSHOT",
                 "securityRules", "2026-05-20-ratings-chat-v1",
                 "mobileAuthTokenPublic", true,
-                "mobileAuthQueryFallback", true,
                 "mobileAuthHeaderFallback", true,
                 "features", Map.of(
-                        "authAvaliarViagemPost", true,
-                        "authTripRatingPost", true,
+                        "sessionCheckRating", true,
                         "organizerRating", true,
                         "postOrganizerRating", true,
                         "participanteOrganizerRatingPost", true,

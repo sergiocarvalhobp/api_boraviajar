@@ -2,8 +2,8 @@
 # A API Java costuma rodar em 127.0.0.1:8081 (ver PORT em /etc/api-boraviajar.env).
 #
 # IMPORTANTE: não bloquear POST em /api/v1/auth/token (login mobile).
-# Se GET /auth/me funcionar mas POST em URLs com "rating" der 401, o nginx/WAF
-# provavelmente remove Authorization nesses paths — use /auth/avaliar-viagem no app.
+# Se GET /auth/me funcionar mas outros POST /auth/* der 401, o nginx provavelmente
+# só libera /auth/token e /auth/session-check — salvar avaliação usa session-check.
 #   proxy_set_header Authorization $http_authorization;
 #   proxy_pass_request_headers on;
 
